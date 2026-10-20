@@ -24,3 +24,21 @@ The plugin is read-only, and makes HTTP GET requests to the configured Moonraker
 
 ## Development
 Install Python dependencies with `pip install -r requirements.txt`. See the [LEDMatrix plugin API](https://github.com/ChuckBuilds/LEDMatrix/blob/main/docs/PLUGIN_API_REFERENCE.md).
+
+## Display customization and startup activity
+
+The plugin settings now expose `font_sizes` (pixel sizes for printer, filename, status, temperatures, percent, ETA) and `colors` (hex colors for each text element, nozzle/bed temperatures, progress fill/background and preparation message). Updates apply on the next configuration reload without replacing your printer profiles.
+
+Before printing progress exceeds the configured `preprint_threshold` (default 1%), the progress bar is replaced with an activity message. Exact stages such as **HOMING**, **QGL**, and **HEAT SOAKING** come from Moonraker's `display_status.message`, typically set using `M117` in Klipper's `PRINT_START` macro. Moonraker's standard `print_stats.state` does **not** expose the currently running G-code or macro phase on its own. If the macro does not publish a message, the plugin shows **PREPARING** or **STARTING** instead. For example:
+
+```gcode
+M117 Homing
+G28
+M117 QGL
+QUAD_GANTRY_LEVEL
+M117 Heat Soaking
+; Your heat soak routine
+M117 Printing
+```
+
+Your macro needs to set meaningful messages at each step; not all printers use QGL. The stage updates on each Moonraker polling interval, not instantaneously.
