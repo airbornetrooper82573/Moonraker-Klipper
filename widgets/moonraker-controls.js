@@ -1,83 +1,137 @@
 (function () {
-  'use strict';
-  if (!window.LEDMatrixWidgets) return;
-  const colors={printer:'#EBF1FA',filename:'#8A9AAF',status:'#39E389',nozzle:'#FFAE37',bed:'#5ABEFF',progress:'#39E389',progress_background:'#1E2C3F',eta:'#EBF1FA',preprint:'#FFDA4E'};
-  const previews=new Set();
-  function colorPicker(container,config,value,options) {
-    const input=document.createElement('input');
-    input.type='color'; input.value=/^#[0-9a-fA-F]{6}$/.test(value)?value:(colors[(options.fieldId||'').split(/[._]/).pop()]||'#ffffff');
-    input.style.cssText='width:66px;height:34px;cursor:pointer;border:1px solid #64748b;border-radius:6px;background:transparent;padding:2px';
-    input.setAttribute('aria-label','Choose color');
-    container.replaceChildren(input);
-    // Native color input stores #RRGGBB; the surrounding widget serializer calls getValue().
-    container.__moonColorInput=input;
-    input.addEventListener('input',()=>{input.dispatchEvent(new Event('moonraker-color-updated',{bubbles:true}));previews.forEach(fn=>fn());});
-  }
-  function preview(container,config,value,options){
-    const wrap=document.createElement('div');
-    wrap.style.cssText='width:100%;max-width:980px;display:flex;flex-direction:column;gap:8px';
-    const title=document.createElement('strong');title.textContent='Live Moonraker Preview — five P5 panels (320 × 32)';
-    const canvas=document.createElement('canvas');canvas.width=320;canvas.height=32;
-    canvas.style.cssText='width:100%;height:auto;background:#000;border:1px solid #475569;border-radius:5px;image-rendering:pixelated';
-    canvas.setAttribute('aria-label','Live LEDMatrix Moonraker preview');
-    const controls=document.createElement('div'); controls.style.cssText='display:flex;gap:8px;align-items:center;flex-wrap:wrap';
-    const select=document.createElement('select');
-    for(const [value,label] of [['printing','Printing 68%'],['startup','Homing / QGL / Heat soak'],['complete','Complete'],['paused','Paused']]){
-      const option=document.createElement('option'); option.value=value; option.textContent=label;select.append(option);
-    }
-    const stage=document.createElement('select');
-    for(const v of ['HOMING','QGL','HEAT SOAKING']){const opt=document.createElement('option');opt.value=v;opt.textContent=v;stage.append(opt);}
-    const info=document.createElement('small');info.textContent='Sample preview. Colors and text sizes update before Save; actual printer data comes from Moonraker.';
-    controls.append(select,stage);wrap.append(title,controls,canvas,info);container.replaceChildren(wrap);
-    const context=canvas.getContext('2d');if(!context)return;
-    const form=container.closest('form')||document;
-    function field(name){const inputs=form.querySelectorAll('input,select');for(const el of inputs){
-      const id=String(el.name||el.id||'');if(id===name||id.endsWith('.'+name)||id.endsWith('_'+name)||id.endsWith('['+name+']'))return el;
-    }return null;}
-    function read(key,def){const el=field(key);return el?(el.type==='checkbox'?el.checked:el.value):def;}
-    function swatch(key){const list=form.querySelectorAll('input[type=color]');for(const el of list){const id=String(el.closest('[data-field]')?.getAttribute('data-field')||el.closest('[id]')?.id||el.name||'');if(id===key||id.endsWith(key))return el.value;}return read(key,colors[key]);}
-    function text(text,x,y,color,size){context.fillStyle=color;context.font=Math.max(6,Math.min(20,Number(size)||8))+'px monospace';context.textBaseline='top';context.fillText(text,x,y);}
-    function draw(){
-      if(!container.isConnected){previews.delete(draw);return;}
-      context.fillStyle='#000';context.fillRect(0,0,320,32);
-      const mode=select.value,startup=mode==='startup',pct=mode==='complete'?100:mode==='paused'?42:68;
-      const c=k=>swatch(k)||colors[k];
-      // Pixel thumbnail: small sample vase/object on left.
-      context.fillStyle='#132331';context.fillRect(1,1,30,30);
-      context.fillStyle='#5ABEFF';context.fillRect(10,6,12,3);context.fillRect(12,9,8,15);
-      context.fillStyle='#7ED4ED';context.fillRect(8,24,16,3);
-      const font=(k,n)=>read(k,n);
-      text('VORON 2.4',36,0,c('printer'),font('printer',10));
-      text('Dragon_Print.gcode',36,11,c('filename'),font('filename',9));
-      text(mode==='startup'?'PRINTING':mode.toUpperCase(),215,0,c('status'),font('status',9));
-      if(startup)text(stage.value,36,22,c('preprint'),font('status',9));
-      else{
-        context.fillStyle=c('progress_background');context.fillRect(36,24,125,4);
-        context.fillStyle=c('progress');context.fillRect(36,24,Math.round(125*pct/100),4);
-        text(pct+'%',165,21,c('progress'),font('progress',9));
-      }
-      // Keep the demo close to 320x32 while avoiding ambiguous E/B labels.
-      context.fillStyle=c('nozzle');context.fillRect(215,12,5,2);context.fillRect(217,14,2,4);
-      text('235°',224,10,c('nozzle'),font('temperature',8));
-      context.fillStyle=c('bed');context.fillRect(260,14,8,2);context.fillRect(262,17,1,2);
-      text('65°',271,10,c('bed'),font('temperature',8));
-      text(startup?'STARTUP':'ETA 1h24m',215,23,c('eta'),font('eta',8));
-    }
-    const redraw=()=>draw(); previews.add(redraw);
-    select.addEventListener('change',draw);stage.addEventListener('change',draw);
-    form.addEventListener('input',draw);form.addEventListener('change',draw);
-    // Some settings frameworks wrap controls with custom widget inputs.
-    form.addEventListener('moonraker-color-updated',draw);
-    draw();
-  }
-  window.LEDMatrixWidgets.register('moonraker-color-picker',{
-    name:'Moonraker Color Picker',version:'1.4.0',render:colorPicker,
-    getValue:function(container){return container?.__moonColorInput?.value||'#ffffff';},
-    setValue:function(container,value){if(container?.__moonColorInput&&/^#[0-9a-fA-F]{6}$/.test(value))container.__moonColorInput.value=value;},
-    handlers:{}
-  });
-  window.LEDMatrixWidgets.register('moonraker-live-preview',{
-    name:'Moonraker Live Preview',version:'1.4.0',render:preview,
-    getValue:function(){return 'live';},setValue:function(){},handlers:{}
-  });
+ 'use strict';
+ if (!window.LEDMatrixWidgets) return;
+ const defaults={printer:'#EBF1FA',filename:'#8A9AAF',status:'#39E389',nozzle:'#FFAE37',bed:'#5ABEFF',progress:'#39E389',progress_background:'#1E2C3F',eta:'#EBF1FA',preprint:'#FFDA4E'};
+ const sizes={printer:10,filename:9,status:9,temperature:8,progress:9,eta:8};
+ const pickers=new Set();
+ const keyOf=(el)=>String(el?.getAttribute('name')||el?.id||el?.closest('[data-field]')?.getAttribute('data-field')||'');
+ const matches=(id,key)=>id===key||id.endsWith('.'+key)||id.endsWith('['+key+']')||id.endsWith('_'+key);
+ function widgetColor(container,config,value,options){
+   const id=String(options?.fieldId||container.id||'');
+   const key=Object.keys(defaults).find(k=>matches(id,k))||'printer';
+   const input=document.createElement('input');input.type='color';
+   input.value=/^#[0-9a-f]{6}$/i.test(value||'')?value:defaults[key];
+   input.style.cssText='height:34px;width:72px;cursor:pointer;padding:2px;border:1px solid #64748b;border-radius:6px;background:transparent';
+   input.setAttribute('aria-label','Choose '+key.replaceAll('_',' ')+' color');
+   container.replaceChildren(input);
+   container.__moonColorInput=input;container.__moonColorKey=key;
+   pickers.add(container);
+   input.addEventListener('input',()=>container.dispatchEvent(new Event('moonraker-setting-change',{bubbles:true})));
+ }
+ function preview(container,config,value,options){
+   let currentConfig=config||{};
+   const root=document.createElement('div');root.style.cssText='display:grid;gap:10px;max-width:980px';
+   const heading=document.createElement('strong');heading.textContent='Moonraker-Klipper · Live Settings Preview (320 × 32)';
+   const top=document.createElement('div');top.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:10px';
+   const printerSelect=document.createElement('select'),stateSelect=document.createElement('select'),stageSelect=document.createElement('select');
+   for(const v of ['printing','startup','paused','complete','standby','offline']){const o=document.createElement('option');o.value=v;o.textContent=v.toUpperCase();stateSelect.append(o);}
+   for(const v of ['HOMING','QGL','HEAT SOAKING','PREPARING']){const o=document.createElement('option');o.value=v;o.textContent=v;stageSelect.append(o);}
+   const button=document.createElement('button');button.type='button';button.textContent='Next printer';
+   const canvas=document.createElement('canvas');canvas.width=320;canvas.height=32;canvas.style.cssText='width:100%;max-width:960px;image-rendering:pixelated;background:#000;border:1px solid #475569;border-radius:6px';
+   const message=document.createElement('small');message.style.cssText='opacity:.8';
+   const label=(text,control)=>{const l=document.createElement('label');l.textContent=text+' ';l.append(control);return l;};
+   top.append(label('Printer',printerSelect),label('Example state',stateSelect),label('Startup stage',stageSelect),button);
+   root.append(heading,top,canvas,message);container.replaceChildren(root);
+   const ctx=canvas.getContext('2d');if(!ctx)return;
+   const form=container.closest('form')||document;
+   const fields=()=>Array.from(form.querySelectorAll('input,select,textarea'));
+   function lookup(path){
+     const candidates=fields().filter(el=>matches(keyOf(el),path)||keyOf(el).endsWith('.'+path));
+     return candidates.length?candidates[candidates.length-1]:null;
+   }
+   function setting(path,fallback){
+     const el=lookup(path);
+     if(el)return el.type==='checkbox'?el.checked:el.value;
+     const parts=path.split('.');let obj=currentConfig;
+     for(const part of parts){if(!obj||typeof obj!=='object')return fallback;obj=obj[part];}
+     return obj===undefined?fallback:obj;
+   }
+   function color(key){
+     for(const node of pickers)if(node.isConnected&&node.__moonColorKey===key&&form.contains(node))return node.__moonColorInput.value;
+     return setting('colors.'+key,defaults[key]);
+   }
+   function size(key){return Math.min(20,Math.max(6,Number(setting('font_sizes.'+key,sizes[key]))||sizes[key]));}
+   function text(value,x,y,k,colorKey,limit){
+     const fontSize=size(k);ctx.font=fontSize+'px monospace';ctx.textBaseline='top';
+     let s=String(value);while(s&&ctx.measureText(s).width>limit)s=s.slice(0,-1);
+     ctx.fillStyle=color(colorKey);ctx.fillText(s,x,y);
+   }
+   function readPrinters(){
+     const fromConfig=setting('printers',[]);
+     // Some LEDMatrix forms serialize the printers as JSON in a textarea.
+     if(typeof fromConfig==='string'){try{const parsed=JSON.parse(fromConfig);if(Array.isArray(parsed))return parsed;}catch(e){}}
+     if(Array.isArray(fromConfig))return fromConfig;
+     return [];
+   }
+   let index=0,clock=0,previousTime=Date.now(),autoRotate=false;
+   function draw(){
+     if(!container.isConnected){clearInterval(timer);return;}
+     const printers=readPrinters().filter(p=>p&&p.enabled!==false);
+     const list=printers.length?printers:[{name:'VORON 2.4',enabled:true}];
+     if(index>=list.length)index=0;
+     const p=list[index],mode=stateSelect.value;
+     printerSelect.replaceChildren();
+     list.forEach((it,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=it.name||('Printer '+(i+1));printerSelect.append(o);});
+     printerSelect.value=String(index);
+     const interval=Math.max(3,Number(setting('seconds_per_printer',10))||10);
+     const refresh=Math.max(5,Number(setting('refresh_seconds',10))||10);
+     const thumbnail=setting('show_thumbnail',true);
+     const c=ctx;c.fillStyle='#000';c.fillRect(0,0,320,32);
+     const left=thumbnail?36:5,right=215;
+     if(thumbnail){
+       c.fillStyle='#132331';c.fillRect(1,1,30,30);
+       c.fillStyle='#60b9ed';c.fillRect(10,6,12,3);c.fillRect(12,9,8,15);
+       c.fillStyle='#8addf1';c.fillRect(8,24,16,3);
+     }
+     text(p.name||'Printer',left,0,'printer','printer',right-left-3);
+     text(mode==='startup'?'PRINTING':mode.toUpperCase(),right+2,0,'status','status',102);
+     text(mode==='standby'||mode==='offline'?'No active job':'Dragon_Print.gcode',left,11,'filename','filename',right-left-4);
+     const progress=mode==='complete'?100:mode==='paused'?42:68;
+     if(mode==='startup'){
+       text(stageSelect.value,left,22,'status','preprint',right-left-3);
+     }else{
+       const barWidth=Math.max(10,right-left-48);
+       c.fillStyle=color('progress_background');c.fillRect(left,23,barWidth,5);
+       c.fillStyle=color('progress');c.fillRect(left,23,Math.round(barWidth*progress/100),5);
+       text(progress+'%',left+barWidth+4,21,'progress','progress',41);
+     }
+     const unit=setting('temperature_unit','C');
+     const temp=n=>unit==='F'?Math.round(n*9/5+32):n;
+     c.fillStyle=color('nozzle');c.fillRect(217,12,5,2);c.fillRect(219,14,2,4);
+     text(temp(235)+'°',224,10,'temperature','nozzle',35);
+     c.fillStyle=color('bed');c.fillRect(260,14,8,2);c.fillRect(262,17,1,2);
+     text(temp(65)+'°',271,10,'temperature','bed',46);
+     text(mode==='startup'?'STARTUP':mode==='printing'?'ETA 1h24m':mode.toUpperCase(),217,22,'eta','eta',102);
+     const enabled=setting('enabled',true);
+     const showMode=mode==='standby'?setting('show_idle',false):mode==='offline'?setting('show_offline',false):mode==='complete'?setting('show_complete',true):true;
+     message.textContent=(enabled&&showMode?'':'Skipped by display filters · ')+(printers.length?list.length+' configured enabled printer(s)':'Sample printer · no printers configured')+
+       ' · '+interval+'s per printer · '+refresh+'s polling · '+unit+
+       ' · thumbnail '+(thumbnail?'on':'off')+
+       ' · startup threshold '+Number(setting('preprint_threshold',.01))*100+'%'+
+       ' · dynamic rotation '+(setting('dynamic_duration.enabled',true)?'on':'off')+
+       ' · display duration '+setting('display_duration',30)+'s · preview uses sample telemetry; unsaved styling shown';
+   }
+   const change=()=>{index=Math.max(0,Number(printerSelect.value)||0);draw();};
+   printerSelect.addEventListener('change',change);
+   stateSelect.addEventListener('change',draw);stageSelect.addEventListener('change',draw);
+   button.addEventListener('click',()=>{index++;draw();});
+   form.addEventListener('input',draw);form.addEventListener('change',draw);
+   form.addEventListener('moonraker-setting-change',draw);
+   // MutationObserver responds when settings editors replace dynamically added printer rows.
+   const observer=new MutationObserver(()=>{if(!container.isConnected){observer.disconnect();return;}draw();});
+   if(form!==document)observer.observe(form,{childList:true,subtree:true});
+   const timer=setInterval(()=>{if(!container.isConnected){clearInterval(timer);observer.disconnect();return;}const now=Date.now();
+     if(autoRotate&&now-previousTime>=Math.max(3000,Number(setting('seconds_per_printer',10))*1000)){index++;previousTime=now;}draw();},1000);
+   draw();
+ }
+ window.LEDMatrixWidgets.register('moonraker-color-picker',{
+   name:'Moonraker Color Picker',version:'1.5.0',render:widgetColor,
+   getValue:function(container){return container?.__moonColorInput?.value||'#ffffff';},
+   setValue:function(container,value){if(container?.__moonColorInput&&/^#[0-9a-f]{6}$/i.test(value))container.__moonColorInput.value=value;},
+   handlers:{}
+ });
+ window.LEDMatrixWidgets.register('moonraker-live-preview',{
+   name:'Moonraker Live Settings Preview',version:'1.5.0',render:preview,
+   getValue:function(){return 'live';},setValue:function(){},handlers:{}
+ });
 })();
