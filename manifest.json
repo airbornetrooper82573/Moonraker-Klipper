@@ -1,7 +1,7 @@
 {
   "id": "moonraker-klipper",
   "name": "Moonraker-Klipper",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "author": "airbornetrooper82573",
   "description": "Cycle through Klipper printers with live Moonraker thumbnails on wide RGB LED matrices.",
   "entry_point": "manager.py",
@@ -18,6 +18,12 @@
   "config_schema": "config_schema.json",
   "last_updated": "2026-10-20",
   "versions": [
+    {
+      "version": "1.5.2",
+      "released": "2026-10-20",
+      "ledmatrix_min_version": "2.0.0",
+      "notes": "Fix custom color widget to follow LEDMatrix field-ID getValue/setValue contract, emit widget-change and update live preview."
+    },
     {
       "version": "1.5.1",
       "released": "2026-10-20",
