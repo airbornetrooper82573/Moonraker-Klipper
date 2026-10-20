@@ -98,6 +98,139 @@
         }
       },
       "additionalProperties": true
+    },
+    "font_sizes": {
+      "type": "object",
+      "title": "Font sizes (pixels)",
+      "description": "Independent fonts; 6–20 px. Large values may be clipped on 32px-tall panels.",
+      "default": {
+        "printer": 10,
+        "filename": 9,
+        "status": 9,
+        "temperature": 8,
+        "progress": 9,
+        "eta": 8
+      },
+      "properties": {
+        "printer": {
+          "type": "integer",
+          "minimum": 6,
+          "maximum": 20,
+          "default": 10
+        },
+        "filename": {
+          "type": "integer",
+          "minimum": 6,
+          "maximum": 20,
+          "default": 9
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 6,
+          "maximum": 20,
+          "default": 9
+        },
+        "temperature": {
+          "type": "integer",
+          "minimum": 6,
+          "maximum": 20,
+          "default": 8
+        },
+        "progress": {
+          "type": "integer",
+          "minimum": 6,
+          "maximum": 20,
+          "default": 9
+        },
+        "eta": {
+          "type": "integer",
+          "minimum": 6,
+          "maximum": 20,
+          "default": 8
+        }
+      },
+      "additionalProperties": false
+    },
+    "colors": {
+      "type": "object",
+      "title": "Text and progress colors",
+      "description": "Use #RRGGBB hex values for each component.",
+      "default": {
+        "printer": "#EBF1FA",
+        "filename": "#8A9AAF",
+        "status": "#39E389",
+        "nozzle": "#FFAE37",
+        "bed": "#5ABEFF",
+        "progress": "#39E389",
+        "progress_background": "#1E2C3F",
+        "eta": "#EBF1FA",
+        "preprint": "#FFDA4E"
+      },
+      "properties": {
+        "printer": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "default": "#EBF1FA",
+          "title": "printer"
+        },
+        "filename": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "default": "#8A9AAF",
+          "title": "filename"
+        },
+        "status": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "default": "#39E389",
+          "title": "status"
+        },
+        "nozzle": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "default": "#FFAE37",
+          "title": "nozzle"
+        },
+        "bed": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "default": "#5ABEFF",
+          "title": "bed"
+        },
+        "progress": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "default": "#39E389",
+          "title": "progress"
+        },
+        "progress_background": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "default": "#1E2C3F",
+          "title": "progress background"
+        },
+        "eta": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "default": "#EBF1FA",
+          "title": "eta"
+        },
+        "preprint": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "default": "#FFDA4E",
+          "title": "preprint"
+        }
+      },
+      "additionalProperties": false
+    },
+    "preprint_threshold": {
+      "type": "number",
+      "title": "Startup progress threshold",
+      "description": "Show startup activity while progress is at or below this fraction (0.01 = 1%).",
+      "minimum": 0,
+      "maximum": 0.1,
+      "default": 0.01
     }
   },
   "required": [
