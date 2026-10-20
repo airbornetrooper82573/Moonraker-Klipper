@@ -62,6 +62,9 @@ class MoonrakerKlipperPlugin(BasePlugin):
         self.show_offline=bool(config.get("show_offline",False))
         self.show_complete=bool(config.get("show_complete",True))
         self.temperature_unit=config.get("temperature_unit","C")
+        self.font_sizes=config.get("font_sizes",{})
+        self.colors=config.get("colors",{})
+        self.preprint_threshold=float(config.get("preprint_threshold",0.01))
 
     def validate_config(self):
         if not super().validate_config():
@@ -74,7 +77,15 @@ class MoonrakerKlipperPlugin(BasePlugin):
                     return False
                 names.add(name)
                 _url(p["url"])
-            return 3<=int(self.config.get("seconds_per_printer",10))<=120 and 5<=int(self.config.get("refresh_seconds",10))<=300
+            for key,size in self.config.get("font_sizes",{}).items():
+                if key not in ("printer","filename","status","temperature","progress","eta") or not 6<=int(size)<=20:
+                    return False
+            for key,color in self.config.get("colors",{}).items():
+                if key not in ("printer","filename","status","nozzle","bed","progress","progress_background","eta","preprint"):
+                    return False
+                if not isinstance(color,str) or len(color)!=7 or color[0]!="#" or any(c not in "0123456789abcdefABCDEF" for c in color[1:]):
+                    return False
+            return 0<=self.preprint_threshold<=0.1 and 3<=int(self.config.get("seconds_per_printer",10))<=120 and 5<=int(self.config.get("refresh_seconds",10))<=300
         except (ValueError,TypeError,KeyError,AttributeError):
             return False
 
@@ -161,16 +172,38 @@ class MoonrakerKlipperPlugin(BasePlugin):
                 base=_url(printer.get("url"))
                 headers=self._headers(printer)
                 response=self._get(base,"/printer/objects/query",headers,
-                    {"print_stats":"","display_status":"","extruder":"","heater_bed":""})
+                    {"print_stats":"","display_status":"","extruder":"","heater_bed":"","idle_timeout":""})
                 status=response.json().get("result",{}).get("status",{})
                 stats=status.get("print_stats") or {}
                 extruder=status.get("extruder") or {}
                 bed=status.get("heater_bed") or {}
-                progress=max(0,min(1,_seconds((status.get("display_status") or {}).get("progress"))))
+                display_status=status.get("display_status") or {}
+                progress=max(0,min(1,_seconds(display_status.get("progress"))))
+                message=str(display_status.get("message") or "").strip()
+                idle_state=str((status.get("idle_timeout") or {}).get("state") or "").lower()
                 elapsed=_seconds(stats.get("print_duration"))
                 state=str(stats.get("state") or "standby").lower()
                 filename=str(stats.get("filename") or "")
-                record.update(state=state,progress=progress,filename=filename,
+                # Moonraker does not natively identify each startup macro step.
+                # M117 messages (display_status.message) provide exact activity labels.
+                startup=state=="printing" and progress<=self.preprint_threshold
+                if startup:
+                    raw=message.lower()
+                    if "qgl" in raw or "quad gantry" in raw:
+                        activity="QGL"
+                    elif "home" in raw or "homing" in raw:
+                        activity="HOMING"
+                    elif "heat soak" in raw or "heatsoak" in raw or "soaking" in raw:
+                        activity="HEAT SOAKING"
+                    elif message:
+                        activity=message
+                    elif idle_state=="printing":
+                        activity="PREPARING"
+                    else:
+                        activity="STARTING"
+                else:
+                    activity=""
+                record.update(state=state,progress=progress,filename=filename,activity=activity,
                     nozzle=_seconds(extruder.get("temperature")),bed=_seconds(bed.get("temperature")),
                     target_nozzle=_seconds(extruder.get("target")),target_bed=_seconds(bed.get("target")),
                     elapsed=elapsed,remaining=max(0,elapsed/progress-elapsed) if progress>0.01 else 0)
@@ -210,10 +243,42 @@ class MoonrakerKlipperPlugin(BasePlugin):
             draw.line((x+2,y+5,x+2,y+6),fill=color)
             draw.line((x+5,y+5,x+5,y+6),fill=color)
 
+    def _font(self,key,default):
+        size=max(6,min(20,int(self.font_sizes.get(key,default))))
+        for path in ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf","DejaVuSans.ttf"):
+            try:
+                return ImageFont.truetype(path,size)
+            except OSError:
+                continue
+        return ImageFont.load_default()
+
+    def _user_color(self,key,default):
+        value=self.colors.get(key)
+        if isinstance(value,str) and len(value)==7 and value.startswith("#"):
+            try:
+                return tuple(bytes.fromhex(value[1:]))
+            except ValueError:
+                pass
+        return default
+
+    @staticmethod
+    def _fit(draw,text,font,max_width):
+        text=str(text)
+        if max_width<=0:
+            return ""
+        while text and draw.textlength(text,font=font)>max_width:
+            text=text[:-1]
+        return text
+
     def _image(self,record,width,height):
         img=Image.new("RGB",(width,height),(0,0,0))
         d=ImageDraw.Draw(img)
-        font=ImageFont.load_default()
+        font=self._font("printer",10)
+        filename_font=self._font("filename",9)
+        state_font=self._font("status",9)
+        progress_font=self._font("progress",9)
+        temp_font=self._font("temperature",8)
+        eta_font=self._font("eta",8)
         thumb_side=min(height-2,max(0,width//4))
         left=thumb_side+5
         thumb=self.thumbnails.get(record.get("thumb_key"))
@@ -231,28 +296,43 @@ class MoonrakerKlipperPlugin(BasePlugin):
         main_right=max(left+45,width-right_width)
         state=record["state"]
         color=self._color(state)
-        d.text((left,1),_short(record["name"],max(5,(main_right-left)//6)),fill=WHITE,font=font)
-        d.text((main_right+2,1),_short(state.upper(),max(5,(width-main_right)//6)),fill=color,font=font)
+        d.text((left,0),self._fit(d,record["name"],font,main_right-left-2),
+               fill=self._user_color("printer",WHITE),font=font)
+        d.text((main_right+2,0),self._fit(d,state.upper(),state_font,width-main_right-3),
+               fill=self._user_color("status",color),font=state_font)
         job=posixpath.basename(record["filename"]) or "No active job"
-        d.text((left,11),_short(job,max(4,(main_right-left)//6)),fill=MUTED,font=font)
-        pct=round(record["progress"]*100)
-        bar_right=max(left+6,main_right-38)
-        d.rectangle((left,23,bar_right,27),fill=BAR)
-        d.rectangle((left,23,left+int((bar_right-left)*record["progress"]),27),fill=color)
-        d.text((bar_right+3,20),"%d%%"%pct,fill=color,font=font)
-        # Smaller icons and 8px temperature font; other rows remain unchanged.
-        try:
-            temp_font=ImageFont.truetype("DejaVuSans.ttf",8)
-        except OSError:
-            temp_font=font
+        d.text((left,11),self._fit(d,job,filename_font,main_right-left-3),
+               fill=self._user_color("filename",MUTED),font=filename_font)
+
+        activity=record.get("activity","")
+        if activity:
+            # Replace the progress bar and percentage until extrusion begins.
+            preprint_color=self._user_color("preprint",YELLOW)
+            d.text((left,22),self._fit(d,activity.upper(),state_font,main_right-left-2),
+                   fill=preprint_color,font=state_font)
+        else:
+            pct=round(record["progress"]*100)
+            value="%d%%"%pct
+            pct_width=int(d.textlength(value,font=progress_font))+4
+            bar_right=max(left+6,main_right-pct_width-2)
+            d.rectangle((left,23,bar_right,27),
+                        fill=self._user_color("progress_background",BAR))
+            d.rectangle((left,23,left+int((bar_right-left)*record["progress"]),27),
+                        fill=self._user_color("progress",color))
+            d.text((bar_right+3,21),value,fill=self._user_color("progress",color),font=progress_font)
+
         nozzle_x=main_right+2
-        self._temperature_icon(d,nozzle_x,12,"nozzle",ORANGE)
+        nozzle_color=self._user_color("nozzle",ORANGE)
+        bed_color=self._user_color("bed",BLUE)
+        self._temperature_icon(d,nozzle_x,12,"nozzle",nozzle_color)
         nozzle_value="%d°"%self._temp(record["nozzle"])
-        d.text((nozzle_x+8,11),nozzle_value,fill=ORANGE,font=temp_font)
+        d.text((nozzle_x+8,11),nozzle_value,fill=nozzle_color,font=temp_font)
         bed_x=nozzle_x+8+int(d.textlength(nozzle_value,font=temp_font))+6
-        self._temperature_icon(d,bed_x,12,"bed",BLUE)
-        d.text((bed_x+9,11),"%d°"%self._temp(record["bed"]),fill=BLUE,font=temp_font)
-        d.text((main_right+2,21),("ETA "+_fmt(record["remaining"])) if state=="printing" else state.upper(),fill=WHITE,font=font)
+        self._temperature_icon(d,bed_x,12,"bed",bed_color)
+        d.text((bed_x+9,11),"%d°"%self._temp(record["bed"]),fill=bed_color,font=temp_font)
+        bottom=("ETA "+_fmt(record["remaining"])) if state=="printing" and not activity else ("STARTUP" if activity else state.upper())
+        d.text((main_right+2,22),self._fit(d,bottom,eta_font,width-main_right-3),
+               fill=self._user_color("eta",WHITE),font=eta_font)
         return img
 
     def display(self,force_clear=False):
