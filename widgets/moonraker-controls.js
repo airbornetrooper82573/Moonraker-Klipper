@@ -27,10 +27,11 @@
    for(const v of ['printing','startup','paused','complete','standby','offline']){const o=document.createElement('option');o.value=v;o.textContent=v.toUpperCase();stateSelect.append(o);}
    for(const v of ['HOMING','QGL','HEAT SOAKING','PREPARING']){const o=document.createElement('option');o.value=v;o.textContent=v;stageSelect.append(o);}
    const button=document.createElement('button');button.type='button';button.textContent='Next printer';
+   const auto=document.createElement('input');auto.type='checkbox';
    const canvas=document.createElement('canvas');canvas.width=320;canvas.height=32;canvas.style.cssText='width:100%;max-width:960px;image-rendering:pixelated;background:#000;border:1px solid #475569;border-radius:6px';
    const message=document.createElement('small');message.style.cssText='opacity:.8';
    const label=(text,control)=>{const l=document.createElement('label');l.textContent=text+' ';l.append(control);return l;};
-   top.append(label('Printer',printerSelect),label('Example state',stateSelect),label('Startup stage',stageSelect),button);
+   top.append(label('Printer',printerSelect),label('Example state',stateSelect),label('Startup stage',stageSelect),button,label('Auto-cycle',auto));
    root.append(heading,top,canvas,message);container.replaceChildren(root);
    const ctx=canvas.getContext('2d');if(!ctx)return;
    const form=container.closest('form')||document;
@@ -63,7 +64,7 @@
      if(Array.isArray(fromConfig))return fromConfig;
      return [];
    }
-   let index=0,clock=0,previousTime=Date.now(),autoRotate=false;
+   let index=0,previousTime=Date.now();
    function draw(){
      if(!container.isConnected){clearInterval(timer);return;}
      const printers=readPrinters().filter(p=>p&&p.enabled!==false);
@@ -115,13 +116,14 @@
    printerSelect.addEventListener('change',change);
    stateSelect.addEventListener('change',draw);stageSelect.addEventListener('change',draw);
    button.addEventListener('click',()=>{index++;draw();});
+   auto.addEventListener('change',()=>{previousTime=Date.now();draw();});
    form.addEventListener('input',draw);form.addEventListener('change',draw);
    form.addEventListener('moonraker-setting-change',draw);
    // MutationObserver responds when settings editors replace dynamically added printer rows.
-   const observer=new MutationObserver(()=>{if(!container.isConnected){observer.disconnect();return;}draw();});
+   const observer=new MutationObserver(changes=>{if(!container.isConnected){observer.disconnect();return;}if(changes.some(change=>!container.contains(change.target)))draw();});
    if(form!==document)observer.observe(form,{childList:true,subtree:true});
    const timer=setInterval(()=>{if(!container.isConnected){clearInterval(timer);observer.disconnect();return;}const now=Date.now();
-     if(autoRotate&&now-previousTime>=Math.max(3000,Number(setting('seconds_per_printer',10))*1000)){index++;previousTime=now;}draw();},1000);
+     if(auto.checked&&now-previousTime>=Math.max(3000,Number(setting('seconds_per_printer',10))*1000)){index++;previousTime=now;}draw();},1000);
    draw();
  }
  window.LEDMatrixWidgets.register('moonraker-color-picker',{
