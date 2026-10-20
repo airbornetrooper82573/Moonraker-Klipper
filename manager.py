@@ -196,6 +196,21 @@ class MoonrakerKlipperPlugin(BasePlugin):
     def _temp(self,value):
         return round(value*9/5+32) if self.temperature_unit=="F" else round(value)
 
+    @staticmethod
+    def _temperature_icon(draw,x,y,kind,color):
+        """Tiny pixel-art shapes, drawn directly for reliable 32px displays."""
+        if kind=="nozzle":
+            draw.rectangle((x+1,y,x+7,y+2),fill=color)
+            draw.rectangle((x+2,y+3,x+6,y+4),fill=color)
+            draw.polygon([(x+2,y+5),(x+6,y+5),(x+4,y+8)],fill=color)
+        else:
+            # Heated print bed: broad horizontal plate with heat waves below.
+            draw.rectangle((x,y+2,x+9,y+4),fill=color)
+            draw.point((x+1,y+1),fill=color)
+            draw.point((x+5,y+1),fill=color)
+            draw.line((x+2,y+6,x+2,y+8),fill=color)
+            draw.line((x+6,y+6,x+6,y+8),fill=color)
+
     def _image(self,record,width,height):
         img=Image.new("RGB",(width,height),(0,0,0))
         d=ImageDraw.Draw(img)
@@ -226,8 +241,14 @@ class MoonrakerKlipperPlugin(BasePlugin):
         d.rectangle((left,23,bar_right,27),fill=BAR)
         d.rectangle((left,23,left+int((bar_right-left)*record["progress"]),27),fill=color)
         d.text((bar_right+3,20),"%d%%"%pct,fill=color,font=font)
-        unit=self.temperature_unit
-        d.text((main_right+2,11),"E%d B%d %s"%(self._temp(record["nozzle"]),self._temp(record["bed"]),unit),fill=ORANGE,font=font)
+        # Pixel-art nozzle and heated-bed symbols replace E/B letter labels.
+        nozzle_x=main_right+2
+        self._temperature_icon(d,nozzle_x,11,"nozzle",ORANGE)
+        nozzle_value="%d°"%self._temp(record["nozzle"])
+        d.text((nozzle_x+11,10),nozzle_value,fill=ORANGE,font=font)
+        bed_x=nozzle_x+11+int(d.textlength(nozzle_value,font=font))+8
+        self._temperature_icon(d,bed_x,11,"bed",BLUE)
+        d.text((bed_x+13,10),"%d°"%self._temp(record["bed"]),fill=BLUE,font=font)
         d.text((main_right+2,21),("ETA "+_fmt(record["remaining"])) if state=="printing" else state.upper(),fill=WHITE,font=font)
         return img
 
