@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Moonraker Multi-Printer",
+  "title": "Moonraker-Klipper Settings",
   "type": "object",
   "properties": {
     "enabled": {
@@ -154,7 +154,7 @@
     "colors": {
       "type": "object",
       "title": "Text and progress colors",
-      "description": "Use #RRGGBB hex values for each component.",
+      "description": "Click the color swatches to choose each element's color.",
       "default": {
         "printer": "#EBF1FA",
         "filename": "#8A9AAF",
@@ -245,7 +245,7 @@
       "type": "string",
       "default": "live",
       "title": "Live LEDMatrix Preview",
-      "description": "Preview printer rotation and colors before saving (sample data).",
+      "description": "Visual 320x32 representation of your unsaved settings including colors, font sizes, printer names and rotation, thumbnails, status options and temperature units.",
       "x-widget": "moonraker-live-preview"
     }
   },
