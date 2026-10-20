@@ -5,13 +5,15 @@
  const sizes={printer:10,filename:9,status:9,temperature:8,progress:9,eta:8};
  const pickers=new Set();
  const colorValues=new Map();
+ const widgetById=new Map();
  const listeners=new Set();
  const notify=()=>{for(const listener of listeners)listener();};
  const keyOf=(el)=>String(el?.getAttribute('name')||el?.id||el?.closest('[data-field]')?.getAttribute('data-field')||'');
  const matches=(id,key)=>id===key||id.endsWith('.'+key)||id.endsWith('['+key+']')||id.endsWith('_'+key);
  function widgetColor(container,config,value,options){
    const id=String(options?.fieldId||container.id||'');
-   const key=Object.keys(defaults).sort((a,b)=>b.length-a.length).find(k=>matches(id,k))||'printer';
+   const fullKey=String(options?.fullKey||id);
+   const key=Object.keys(defaults).sort((a,b)=>b.length-a.length).find(k=>matches(fullKey,k)||matches(id,k))||'printer';
    const input=document.createElement('input');input.type='color';
    input.value=/^#[0-9a-f]{6}$/i.test(value||'')?value:defaults[key];
    input.style.cssText='height:34px;width:72px;cursor:pointer;padding:2px;border:1px solid #64748b;border-radius:6px;background:transparent';
@@ -20,7 +22,8 @@
    container.__moonColorInput=input;container.__moonColorKey=key;
    pickers.add(container);
    colorValues.set(key,input.value);
-   const changed=()=>{colorValues.set(key,input.value);notify();container.dispatchEvent(new Event('moonraker-setting-change',{bubbles:true}));};
+   widgetById.set(id,{input,key,container});
+   const changed=()=>{colorValues.set(key,input.value);notify();document.dispatchEvent(new CustomEvent('widget-change',{detail:{fieldId:id,value:input.value},bubbles:true}));container.dispatchEvent(new Event('moonraker-setting-change',{bubbles:true}));};
    input.addEventListener('input',changed);
    input.addEventListener('change',changed);
  }
@@ -126,6 +129,7 @@
    auto.addEventListener('change',()=>{previousTime=Date.now();draw();});
    form.addEventListener('input',draw);form.addEventListener('change',draw);
    form.addEventListener('moonraker-setting-change',draw);
+   document.addEventListener('widget-change',draw);
    listeners.add(draw);
    // MutationObserver responds when settings editors replace dynamically added printer rows.
    const observer=new MutationObserver(changes=>{if(!container.isConnected){observer.disconnect();return;}if(changes.some(change=>!container.contains(change.target)))draw();});
@@ -135,9 +139,9 @@
    draw();
  }
  window.LEDMatrixWidgets.register('moonraker-color-picker',{
-   name:'Moonraker Color Picker',version:'1.5.1',render:widgetColor,
-   getValue:function(container){return container?.__moonColorInput?.value||colorValues.get(container?.__moonColorKey)||'#ffffff';},
-   setValue:function(container,value){if(container?.__moonColorInput&&/^#[0-9a-f]{6}$/i.test(value)){container.__moonColorInput.value=value;colorValues.set(container.__moonColorKey,value);notify();}},
+   name:'Moonraker Color Picker',version:'1.5.2',render:widgetColor,
+   getValue:function(fieldId){return widgetById.get(String(fieldId))?.input.value||'#ffffff';},
+   setValue:function(fieldId,value){const widget=widgetById.get(String(fieldId));if(widget&&/^#[0-9a-f]{6}$/i.test(value)){widget.input.value=value;colorValues.set(widget.key,value);notify();}},
    handlers:{}
  });
  window.LEDMatrixWidgets.register('moonraker-live-preview',{
