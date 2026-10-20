@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Moonraker Multi-Printer",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "printers": {
+      "type": "array",
+      "title": "Printers",
+      "description": "Add one Moonraker connection for each printer.",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "url"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Printer Name"
+          },
+          "url": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Moonraker URL",
+            "description": "Example: http://192.168.1.25:7125"
+          },
+          "api_key": {
+            "type": "string",
+            "default": "",
+            "title": "API key (if required)"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    },
+    "seconds_per_printer": {
+      "type": "integer",
+      "default": 10,
+      "minimum": 3,
+      "maximum": 120
+    },
+    "refresh_seconds": {
+      "type": "integer",
+      "default": 10,
+      "minimum": 5,
+      "maximum": 300
+    },
+    "show_thumbnail": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_idle": {
+      "type": "boolean",
+      "default": false
+    },
+    "show_offline": {
+      "type": "boolean",
+      "default": false
+    },
+    "show_complete": {
+      "type": "boolean",
+      "default": true
+    },
+    "temperature_unit": {
+      "type": "string",
+      "enum": [
+        "C",
+        "F"
+      ],
+      "default": "C"
+    },
+    "display_duration": {
+      "type": "number",
+      "default": 30,
+      "minimum": 1,
+      "maximum": 3600
+    },
+    "dynamic_duration": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "max_duration_seconds": {
+          "type": "number",
+          "default": 3600
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "enabled"
+  ],
+  "additionalProperties": true
+}
