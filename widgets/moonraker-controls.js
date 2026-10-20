@@ -4,11 +4,14 @@
  const defaults={printer:'#EBF1FA',filename:'#8A9AAF',status:'#39E389',nozzle:'#FFAE37',bed:'#5ABEFF',progress:'#39E389',progress_background:'#1E2C3F',eta:'#EBF1FA',preprint:'#FFDA4E'};
  const sizes={printer:10,filename:9,status:9,temperature:8,progress:9,eta:8};
  const pickers=new Set();
+ const colorValues=new Map();
+ const listeners=new Set();
+ const notify=()=>{for(const listener of listeners)listener();};
  const keyOf=(el)=>String(el?.getAttribute('name')||el?.id||el?.closest('[data-field]')?.getAttribute('data-field')||'');
  const matches=(id,key)=>id===key||id.endsWith('.'+key)||id.endsWith('['+key+']')||id.endsWith('_'+key);
  function widgetColor(container,config,value,options){
    const id=String(options?.fieldId||container.id||'');
-   const key=Object.keys(defaults).find(k=>matches(id,k))||'printer';
+   const key=Object.keys(defaults).sort((a,b)=>b.length-a.length).find(k=>matches(id,k))||'printer';
    const input=document.createElement('input');input.type='color';
    input.value=/^#[0-9a-f]{6}$/i.test(value||'')?value:defaults[key];
    input.style.cssText='height:34px;width:72px;cursor:pointer;padding:2px;border:1px solid #64748b;border-radius:6px;background:transparent';
@@ -16,7 +19,10 @@
    container.replaceChildren(input);
    container.__moonColorInput=input;container.__moonColorKey=key;
    pickers.add(container);
-   input.addEventListener('input',()=>container.dispatchEvent(new Event('moonraker-setting-change',{bubbles:true})));
+   colorValues.set(key,input.value);
+   const changed=()=>{colorValues.set(key,input.value);notify();container.dispatchEvent(new Event('moonraker-setting-change',{bubbles:true}));};
+   input.addEventListener('input',changed);
+   input.addEventListener('change',changed);
  }
  function preview(container,config,value,options){
    let currentConfig=config||{};
@@ -48,7 +54,8 @@
      return obj===undefined?fallback:obj;
    }
    function color(key){
-     for(const node of pickers)if(node.isConnected&&node.__moonColorKey===key&&form.contains(node))return node.__moonColorInput.value;
+     if(colorValues.has(key))return colorValues.get(key);
+     for(const node of pickers)if(node.isConnected&&node.__moonColorKey===key)return node.__moonColorInput.value;
      return setting('colors.'+key,defaults[key]);
    }
    function size(key){return Math.min(20,Math.max(6,Number(setting('font_sizes.'+key,sizes[key]))||sizes[key]));}
@@ -66,7 +73,7 @@
    }
    let index=0,previousTime=Date.now();
    function draw(){
-     if(!container.isConnected){clearInterval(timer);return;}
+     if(!container.isConnected){clearInterval(timer);listeners.delete(draw);return;}
      const printers=readPrinters().filter(p=>p&&p.enabled!==false);
      const list=printers.length?printers:[{name:'VORON 2.4',enabled:true}];
      if(index>=list.length)index=0;
@@ -119,21 +126,22 @@
    auto.addEventListener('change',()=>{previousTime=Date.now();draw();});
    form.addEventListener('input',draw);form.addEventListener('change',draw);
    form.addEventListener('moonraker-setting-change',draw);
+   listeners.add(draw);
    // MutationObserver responds when settings editors replace dynamically added printer rows.
    const observer=new MutationObserver(changes=>{if(!container.isConnected){observer.disconnect();return;}if(changes.some(change=>!container.contains(change.target)))draw();});
    if(form!==document)observer.observe(form,{childList:true,subtree:true});
-   const timer=setInterval(()=>{if(!container.isConnected){clearInterval(timer);observer.disconnect();return;}const now=Date.now();
+   const timer=setInterval(()=>{if(!container.isConnected){clearInterval(timer);observer.disconnect();listeners.delete(draw);return;}const now=Date.now();
      if(auto.checked&&now-previousTime>=Math.max(3000,Number(setting('seconds_per_printer',10))*1000)){index++;previousTime=now;}draw();},1000);
    draw();
  }
  window.LEDMatrixWidgets.register('moonraker-color-picker',{
-   name:'Moonraker Color Picker',version:'1.5.0',render:widgetColor,
-   getValue:function(container){return container?.__moonColorInput?.value||'#ffffff';},
-   setValue:function(container,value){if(container?.__moonColorInput&&/^#[0-9a-f]{6}$/i.test(value))container.__moonColorInput.value=value;},
+   name:'Moonraker Color Picker',version:'1.5.1',render:widgetColor,
+   getValue:function(container){return container?.__moonColorInput?.value||colorValues.get(container?.__moonColorKey)||'#ffffff';},
+   setValue:function(container,value){if(container?.__moonColorInput&&/^#[0-9a-f]{6}$/i.test(value)){container.__moonColorInput.value=value;colorValues.set(container.__moonColorKey,value);notify();}},
    handlers:{}
  });
  window.LEDMatrixWidgets.register('moonraker-live-preview',{
-   name:'Moonraker Live Settings Preview',version:'1.5.0',render:preview,
+   name:'Moonraker Live Settings Preview',version:'1.5.1',render:preview,
    getValue:function(){return 'live';},setValue:function(){},handlers:{}
  });
 })();
