@@ -172,63 +172,72 @@
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#EBF1FA",
           "title": "Printer",
-          "x-widget": "moonraker-color-picker"
+          "x-widget": "moonraker-color-picker",
+          "description": "Choose a color; the preview should update immediately before Save."
         },
         "filename": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#8A9AAF",
           "title": "Filename",
-          "x-widget": "moonraker-color-picker"
+          "x-widget": "moonraker-color-picker",
+          "description": "Choose a color; the preview should update immediately before Save."
         },
         "status": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#39E389",
           "title": "Status",
-          "x-widget": "moonraker-color-picker"
+          "x-widget": "moonraker-color-picker",
+          "description": "Choose a color; the preview should update immediately before Save."
         },
         "nozzle": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#FFAE37",
           "title": "Nozzle",
-          "x-widget": "moonraker-color-picker"
+          "x-widget": "moonraker-color-picker",
+          "description": "Choose a color; the preview should update immediately before Save."
         },
         "bed": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#5ABEFF",
           "title": "Bed",
-          "x-widget": "moonraker-color-picker"
+          "x-widget": "moonraker-color-picker",
+          "description": "Choose a color; the preview should update immediately before Save."
         },
         "progress": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#39E389",
           "title": "Progress",
-          "x-widget": "moonraker-color-picker"
+          "x-widget": "moonraker-color-picker",
+          "description": "Choose a color; the preview should update immediately before Save."
         },
         "progress_background": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#1E2C3F",
           "title": "Progress Background",
-          "x-widget": "moonraker-color-picker"
+          "x-widget": "moonraker-color-picker",
+          "description": "Choose a color; the preview should update immediately before Save."
         },
         "eta": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#EBF1FA",
           "title": "Eta",
-          "x-widget": "moonraker-color-picker"
+          "x-widget": "moonraker-color-picker",
+          "description": "Choose a color; the preview should update immediately before Save."
         },
         "preprint": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#FFDA4E",
           "title": "Preprint",
-          "x-widget": "moonraker-color-picker"
+          "x-widget": "moonraker-color-picker",
+          "description": "Choose a color; the preview should update immediately before Save."
         }
       },
       "additionalProperties": false
