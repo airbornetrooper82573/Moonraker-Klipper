@@ -13,7 +13,7 @@
  function widgetColor(container,config,value,options){
    const id=String(options?.fieldId||container.id||'');
    const fullKey=String(options?.fullKey||id);
-   const key=Object.keys(defaults).sort((a,b)=>b.length-a.length).find(k=>matches(fullKey,k)||matches(id,k))||'printer';
+   const key=Object.keys(defaults).sort((a,b)=>b.length-a.length).find(k=>matches(fullKey,k)||matches(id,k)||fullKey.replace(/-/g,'_').endsWith(k))||'printer';
    const input=document.createElement('input');input.type='color';
    input.value=/^#[0-9a-f]{6}$/i.test(value||'')?value:defaults[key];
    input.style.cssText='height:34px;width:72px;cursor:pointer;padding:2px;border:1px solid #64748b;border-radius:6px;background:transparent';
@@ -44,19 +44,36 @@
    root.append(heading,top,canvas,message);container.replaceChildren(root);
    const ctx=canvas.getContext('2d');if(!ctx)return;
    const form=container.closest('form')||document;
+   let geometry={width:320,height:32,source:'fallback'};
+   const geometryLabel=document.createElement('small');root.insertBefore(geometryLabel,canvas);
+   async function loadGeometry(){
+     try {
+       const response=await fetch('/api/v3/config/main',{credentials:'same-origin'});
+       if(!response.ok)return;
+       const payload=await response.json();
+       const display=(payload.data||{}).display||{};
+       const hw=display.hardware||display;
+       const rows=Math.max(1,Number(hw.rows||32));
+       const cols=Math.max(1,Number(hw.cols||64));
+       const chain=Math.max(1,Number(hw.chain_length||1));
+       const parallel=Math.max(1,Number(hw.parallel||1));
+       let width=cols*chain,height=rows*parallel;
+       if([90,270].includes(Number(hw.rotation||hw.rotate||0))){const t=width;width=height;height=t;}
+       if(width<=2048&&height<=1024)geometry={width,height,source:'LEDMatrix configuration'};
+       draw();
+     }catch(error){console.warn('[Moonraker Preview] Could not read geometry',error);}
+   }
+   void loadGeometry();
    const fields=()=>Array.from(form.querySelectorAll('input,select,textarea'));
    function lookup(path){
-     // LEDMatrix flattens nested fields into DOM ids with underscores,
-     // while name attributes may use dotted paths or bracket notation.
-     const dot=path;
-     const flat=path.replaceAll('.','_');
-     const bracket=path.replace(/\\.([^.]*)/g,'[$1]');
-     const candidate=fields().filter(el=>{
-       const id=keyOf(el);
-       return id===dot||id.endsWith('.'+dot)||id.endsWith('_'+flat)||
-              id===flat||id.endsWith('['+flat+']')||id.endsWith(bracket);
-     });
-     return candidate.length?candidate[candidate.length-1]:null;
+     for(const section of form.querySelectorAll('[data-setting-key]')){
+       if(section.getAttribute('data-setting-key')===path){
+         const input=section.querySelector('input[name],select[name],textarea[name]');
+         if(input)return input;
+       }
+     }
+     const flat=path.replace(/[._]/g,'-');
+     return fields().find(el=>[path,flat].includes(keyOf(el))||keyOf(el).endsWith('-'+flat)||el.name===path)||null;
    }
    function setting(path,fallback){
      const el=lookup(path);
@@ -66,9 +83,14 @@
      return obj===undefined?fallback:obj;
    }
    function color(key){
-     if(colorValues.has(key))return colorValues.get(key);
-     for(const node of pickers)if(node.isConnected&&node.__moonColorKey===key)return node.__moonColorInput.value;
-     return setting('colors.'+key,defaults[key]);
+     for(const section of form.querySelectorAll('[data-setting-key]')){
+       if(section.getAttribute('data-setting-key')!=='colors.'+key)continue;
+       const input=section.querySelector('input[type=color]');
+       if(input&&/^#[0-9a-f]{6}$/i.test(input.value))return input.value;
+       const named=section.querySelector('input[name]');
+       if(named&&/^#[0-9a-f]{6}$/i.test(named.value))return named.value;
+     }
+     return colorValues.get(key)||setting('colors.'+key,defaults[key]);
    }
    function size(key){return Math.min(20,Math.max(6,Number(setting('font_sizes.'+key,sizes[key]))||sizes[key]));}
    function text(value,x,y,k,colorKey,limit){
@@ -96,7 +118,11 @@
      const interval=Math.max(3,Number(setting('seconds_per_printer',10))||10);
      const refresh=Math.max(5,Number(setting('refresh_seconds',10))||10);
      const thumbnail=setting('show_thumbnail',true);
-     const c=ctx;c.fillStyle='#000';c.fillRect(0,0,320,32);
+     const W=geometry.width,H=geometry.height;
+     if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H;}
+     geometryLabel.textContent='Display preview '+W+' × '+H+' px · '+geometry.source;
+     const c=ctx;c.fillStyle='#000';c.fillRect(0,0,W,H);
+     c.save();c.scale(W/320,H/32);
      const left=thumbnail?36:5,right=215;
      if(thumbnail){
        c.fillStyle='#132331';c.fillRect(1,1,30,30);
@@ -124,6 +150,7 @@
      text(mode==='startup'?'STARTUP':mode==='printing'?'ETA 1h24m':mode.toUpperCase(),217,22,'eta','eta',102);
      const enabled=setting('enabled',true);
      const showMode=mode==='standby'?setting('show_idle',false):mode==='offline'?setting('show_offline',false):mode==='complete'?setting('show_complete',true):true;
+     c.restore();
      message.textContent=(enabled&&showMode?'':'Skipped by display filters · ')+(printers.length?list.length+' configured enabled printer(s)':'Sample printer · no printers configured')+
        ' · '+interval+'s per printer · '+refresh+'s polling · '+unit+
        ' · thumbnail '+(thumbnail?'on':'off')+
@@ -139,6 +166,7 @@
    form.addEventListener('input',draw);form.addEventListener('change',draw);
    form.addEventListener('moonraker-setting-change',draw);
    document.addEventListener('widget-change',draw);
+   document.addEventListener('widget-change',draw);
    listeners.add(draw);
    // MutationObserver responds when settings editors replace dynamically added printer rows.
    const observer=new MutationObserver(changes=>{if(!container.isConnected){observer.disconnect();return;}if(changes.some(change=>!container.contains(change.target)))draw();});
@@ -148,7 +176,7 @@
    draw();
  }
  window.LEDMatrixWidgets.register('moonraker-color-picker',{
-   name:'Moonraker Color Picker',version:'1.5.2',render:widgetColor,
+   name:'Moonraker Color Picker',version:'1.6.0',render:widgetColor,
    getValue:function(fieldId){return widgetById.get(String(fieldId))?.input.value||'#ffffff';},
    setValue:function(fieldId,value){const widget=widgetById.get(String(fieldId));if(widget&&/^#[0-9a-f]{6}$/i.test(value)){widget.input.value=value;colorValues.set(widget.key,value);notify();}},
    handlers:{}
