@@ -1,4 +1,4 @@
-# Moonraker Klipper — LEDMatrix Multi-Printer
+# Moonraker-Klipper
 
 A native [ChuckBuilds LEDMatrix](https://github.com/ChuckBuilds/LEDMatrix) Python plugin inspired by [Tronbyt Moonraker](https://github.com/tronbyt/apps/tree/main/apps/moonraker).
 
@@ -46,3 +46,7 @@ Your macro needs to set meaningful messages at each step; not all printers use Q
 ## Visual settings (v1.4.0)
 
 Use the clickable color swatches rather than typing hex values. The **Live LEDMatrix Preview** widget renders a sample 320×32 printer screen and lets you inspect printing, preparation (homing/QGL/heat soak), completed, and paused states before saving. Color changes and font sizes can be tried without altering a real printer. The preview is an approximation of LEDMatrix's physical Pillow rendering.
+
+## v1.5.0 live settings preview
+
+The preview reacts to the unsaved settings in the LEDMatrix form: enabled printers and names, individual text and bar colors, font sizes, thumbnail toggle, temperature units, status display filters, display and polling intervals, and pre-print threshold. The preview's sample status selector covers printing, startup, paused, completed, idle and offline displays. It is a browser approximation, **not** a connection to printers; the screen rendering uses example temperatures/filename/progress. The selected printer can be changed without saving. Some LEDMatrix UI versions may serialize nested color/font/printer fields differently; test the preview in your installed build.
