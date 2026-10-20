@@ -50,3 +50,7 @@ Use the clickable color swatches rather than typing hex values. The **Live LEDMa
 ## v1.5.0 live settings preview
 
 The preview reacts to the unsaved settings in the LEDMatrix form: enabled printers and names, individual text and bar colors, font sizes, thumbnail toggle, temperature units, status display filters, display and polling intervals, and pre-print threshold. The preview's sample status selector covers printing, startup, paused, completed, idle and offline displays. It is a browser approximation, **not** a connection to printers; the screen rendering uses example temperatures/filename/progress. The selected printer can be changed without saving. Some LEDMatrix UI versions may serialize nested color/font/printer fields differently; test the preview in your installed build.
+
+## v1.6.0 adaptive live preview
+
+The preview reads unsaved values directly from the LEDMatrix settings form's `data-setting-key` containers. It attempts to load `display.hardware.rows`, `cols`, `chain_length`, and `parallel` from `/api/v3/config/main` and sizes the browser canvas to the configured matrix dimensions. If that endpoint cannot be read, it falls back to 320×32 and identifies the fallback in the preview. The renderer scales the 320×32 reference design to the actual canvas size; it is not yet a pixel-perfect mirror of every physical arrangement. Changes should appear without Save; verify in the user's installed LEDMatrix UI.
