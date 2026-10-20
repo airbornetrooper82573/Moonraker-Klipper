@@ -42,3 +42,7 @@ M117 Printing
 ```
 
 Your macro needs to set meaningful messages at each step; not all printers use QGL. The stage updates on each Moonraker polling interval, not instantaneously.
+
+## Visual settings (v1.4.0)
+
+Use the clickable color swatches rather than typing hex values. The **Live LEDMatrix Preview** widget renders a sample 320×32 printer screen and lets you inspect printing, preparation (homing/QGL/heat soak), completed, and paused states before saving. Color changes and font sizes can be tried without altering a real printer. The preview is an approximation of LEDMatrix's physical Pillow rendering.
