@@ -1,7 +1,7 @@
 {
   "id": "moonraker-klipper",
   "name": "Moonraker Klipper Multi-Printer",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "author": "airbornetrooper82573",
   "description": "Cycle through Klipper printers with live Moonraker thumbnails on wide RGB LED matrices.",
   "entry_point": "manager.py",
@@ -18,6 +18,12 @@
   "config_schema": "config_schema.json",
   "last_updated": "2026-10-20",
   "versions": [
+    {
+      "version": "1.4.0",
+      "released": "2026-10-20",
+      "ledmatrix_min_version": "2.0.0",
+      "notes": "Add native color picker widgets and live 320x32 printer preview within the LEDMatrix settings."
+    },
     {
       "version": "1.3.0",
       "released": "2026-10-20",
@@ -41,6 +47,18 @@
       "released": "2026-10-20",
       "ledmatrix_min_version": "2.0.0",
       "notes": "Initial multi-printer rotation and thumbnail support."
+    }
+  ],
+  "widgets": [
+    {
+      "name": "moonraker-color-picker",
+      "script": "moonraker-controls.js",
+      "description": "Native browser color picker for display elements"
+    },
+    {
+      "name": "moonraker-live-preview",
+      "script": "moonraker-controls.js",
+      "description": "Live 320x32 multi-printer preview"
     }
   ]
 }
