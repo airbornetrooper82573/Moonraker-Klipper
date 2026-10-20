@@ -46,8 +46,17 @@
    const form=container.closest('form')||document;
    const fields=()=>Array.from(form.querySelectorAll('input,select,textarea'));
    function lookup(path){
-     const candidates=fields().filter(el=>matches(keyOf(el),path)||keyOf(el).endsWith('.'+path));
-     return candidates.length?candidates[candidates.length-1]:null;
+     // LEDMatrix flattens nested fields into DOM ids with underscores,
+     // while name attributes may use dotted paths or bracket notation.
+     const dot=path;
+     const flat=path.replaceAll('.','_');
+     const bracket=path.replace(/\\.([^.]*)/g,'[$1]');
+     const candidate=fields().filter(el=>{
+       const id=keyOf(el);
+       return id===dot||id.endsWith('.'+dot)||id.endsWith('_'+flat)||
+              id===flat||id.endsWith('['+flat+']')||id.endsWith(bracket);
+     });
+     return candidate.length?candidate[candidate.length-1]:null;
    }
    function setting(path,fallback){
      const el=lookup(path);
