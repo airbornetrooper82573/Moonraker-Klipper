@@ -171,55 +171,64 @@
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#EBF1FA",
-          "title": "printer"
+          "title": "Printer",
+          "x-widget": "moonraker-color-picker"
         },
         "filename": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#8A9AAF",
-          "title": "filename"
+          "title": "Filename",
+          "x-widget": "moonraker-color-picker"
         },
         "status": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#39E389",
-          "title": "status"
+          "title": "Status",
+          "x-widget": "moonraker-color-picker"
         },
         "nozzle": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#FFAE37",
-          "title": "nozzle"
+          "title": "Nozzle",
+          "x-widget": "moonraker-color-picker"
         },
         "bed": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#5ABEFF",
-          "title": "bed"
+          "title": "Bed",
+          "x-widget": "moonraker-color-picker"
         },
         "progress": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#39E389",
-          "title": "progress"
+          "title": "Progress",
+          "x-widget": "moonraker-color-picker"
         },
         "progress_background": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#1E2C3F",
-          "title": "progress background"
+          "title": "Progress Background",
+          "x-widget": "moonraker-color-picker"
         },
         "eta": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#EBF1FA",
-          "title": "eta"
+          "title": "Eta",
+          "x-widget": "moonraker-color-picker"
         },
         "preprint": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "default": "#FFDA4E",
-          "title": "preprint"
+          "title": "Preprint",
+          "x-widget": "moonraker-color-picker"
         }
       },
       "additionalProperties": false
@@ -231,6 +240,13 @@
       "minimum": 0,
       "maximum": 0.1,
       "default": 0.01
+    },
+    "live_preview": {
+      "type": "string",
+      "default": "live",
+      "title": "Live LEDMatrix Preview",
+      "description": "Preview printer rotation and colors before saving (sample data).",
+      "x-widget": "moonraker-live-preview"
     }
   },
   "required": [
